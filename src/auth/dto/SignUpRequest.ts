@@ -2,15 +2,15 @@ import {
   IsString,
   IsArray,
   ArrayNotEmpty,
-  IsEmail, Length,
+  IsEmail, Length, MinLength,
 } from 'class-validator';
 
-export class CreateUserRequest {
+export class SignUpRequest {
   @IsEmail()
   email: string;
 
   @IsString()
-  @Length(8)
+  @MinLength(8, { message: 'Password must be at least 8 characters' })
   password: string;
 
   @IsString()
@@ -18,10 +18,10 @@ export class CreateUserRequest {
 
   @IsArray()
   @ArrayNotEmpty()
-  addresses: CreateUserRequestAddress[];
+  addresses: SignUpRequestAddress[];
 }
 
-export class CreateUserRequestAddress {
+export class SignUpRequestAddress {
   @IsString()
   name: string;
 

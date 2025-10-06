@@ -12,10 +12,13 @@ export class User {
   hashedPassword: string;
 
   @Prop({unique: true})
-  phoneNum: string;
+  phoneNum: string | null;
 
   @Prop()
   name: string;
+
+  @Prop()
+  role: "USER" | "ADMIN";
 
   @Prop()
   addresses: Address[];
