@@ -11,8 +11,8 @@ export class User {
   @Prop()
   hashedPassword: string;
 
-  @Prop({unique: true})
-  phoneNum: string | null;
+  @Prop({unique: true, sparse: true})
+  phoneNum?: string;
 
   @Prop()
   name: string;

@@ -10,7 +10,7 @@ export interface JwtPayload {
 }
 
 export class JwtService {
-  private readonly secret = process.env.JWT_SECRET || 'a_very_secret_key';
+  private readonly secret = process.env.JWT_SECRET || '6c2104b5175e392af2e7a51525c34f9d30d97c3d0b345cf0de63a549e08ee4e709ba0baa';
 
   sign(userId: string, role: UserRole): string {
     const payload: JwtPayload = { sub: userId, role };

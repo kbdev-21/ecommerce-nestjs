@@ -26,22 +26,20 @@ export class AuthService {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
-    return plainToInstance(UserResponse, user);
+    return this.userToResponse(user.toObject());
   }
 
   async signUp(request: SignUpRequest): Promise<SignInResponse> {
-    // 1. Hash password
     const hashed = await this.hashPassword(request.password);
 
-    // 2. Tạo user mới
     const newUser = new this.userModel({
       id: crypto.randomUUID(),
       email: request.email,
       phoneNum: null,
       hashedPassword: hashed,
       name: request.name,
-      role: "USER",
-      addresses: request.addresses.map(addr => ({
+      role: 'USER',
+      addresses: request.addresses.map((addr) => ({
         id: crypto.randomUUID(),
         name: addr.name,
         detail: addr.detail,
@@ -49,14 +47,12 @@ export class AuthService {
       createdAt: new Date(),
     });
 
-    // 3. Lưu vào DB
     const savedUser = await newUser.save();
 
-    // 4. Tạo token ngay lập tức
     const token = this.jwtService.sign(savedUser.id, savedUser.role);
 
     return {
-      user: plainToInstance(UserResponse, savedUser),
+      user: this.userToResponse(savedUser.toObject()),
       token,
     };
   }
@@ -71,7 +67,7 @@ export class AuthService {
     const token = this.jwtService.sign(user.id, user.role);
 
     return {
-      user: plainToInstance(UserResponse, user),
+      user: this.userToResponse(user.toObject()),
       token,
     };
   }
@@ -94,5 +90,26 @@ export class AuthService {
 
   private async comparePassword(password: string, hashed: string): Promise<boolean> {
     return bcrypt.compare(password, hashed);
+  }
+
+  private userToResponse(user: User): UserResponse {
+    const userResponse = new UserResponse();
+
+    userResponse.id = user.id;
+    userResponse.email = user.email ?? null;
+    userResponse.phoneNum = user.phoneNum ?? null;
+    userResponse.name = user.name;
+    userResponse.role = user.role;
+    userResponse.createdAt = user.createdAt;
+
+    // map addresses manually
+    userResponse.addresses = (user.addresses || []).map(addr => ({
+      id: addr.id,
+      name: addr.name,
+      detail: addr.detail,
+    }));
+
+    return userResponse;
+
   }
 }
