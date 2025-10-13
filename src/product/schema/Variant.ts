@@ -9,9 +9,6 @@ export class Variant {
   productId: string;
 
   @Prop()
-  productTitle: string;
-
-  @Prop()
   name: string;
 
   @Prop()

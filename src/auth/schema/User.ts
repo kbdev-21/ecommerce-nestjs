@@ -11,7 +11,7 @@ export class User {
   @Prop()
   hashedPassword: string;
 
-  @Prop({unique: true, sparse: true})
+  @Prop({required: false})
   phoneNum?: string;
 
   @Prop()
@@ -25,6 +25,9 @@ export class User {
 
   @Prop()
   createdAt: Date;
+
+  @Prop()
+  isBanned: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

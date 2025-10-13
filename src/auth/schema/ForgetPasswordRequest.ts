@@ -5,17 +5,14 @@ export class ForgetPasswordRequest {
   @Prop({required: true, unique: true})
   id: string;
 
-  @Prop({unique: true})
+  @Prop({required: true})
   userId: string;
-
-  @Prop({required: false})
-  newPassword?: string;
 
   @Prop()
   otpCode: string;
 
   @Prop()
-  status: "PENDING" | "COMPLETED";
+  status: "PENDING" | "COMPLETED" | "CANCELED";
 
   @Prop()
   createdAt: Date;

@@ -28,7 +28,6 @@ export class ProductService {
         const newVariant = new this.variantModel({
           id: crypto.randomUUID(),
           productId: newProductId,
-          productTitle: request.title,
           name: variantDto.name,
           stock: variantDto.stock,
           price: variantDto.price,
@@ -157,7 +156,6 @@ export class ProductService {
           const variant = new this.variantModel({
             id: crypto.randomUUID(),
             productId: product.id,
-            productTitle: product.title,
             name: vdto.name,
             price: vdto.price,
             stock: vdto.stock,

@@ -3,6 +3,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ProductModule } from './product/product.module';
 import { AuthModule } from './auth/auth.module';
 import { NotificationModule } from './notification/notification.module';
+import { OrderrModule } from './orderr/orderr.module';
+import { OrderModule } from './order/order.module';
 
 @Module({
   imports: [
@@ -12,6 +14,7 @@ import { NotificationModule } from './notification/notification.module';
     ProductModule,
     AuthModule,
     NotificationModule,
+    OrderModule,
   ],
 })
 export class AppModule {}

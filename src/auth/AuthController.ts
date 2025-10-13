@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Get, Req, UseGuards, Param, Put, Patch, ForbiddenException } from '@nestjs/common';
 import { AuthService } from './AuthService';
 import { SignUpRequest } from './dto/SignUpRequest';
 import { SignInRequest } from './dto/SignInRequest';
@@ -7,6 +7,8 @@ import { UserResponse } from './dto/UserResponse';
 import { JwtAuthGuard } from './JwtAuthGuard';
 import { JwtPayload } from './JwtService';
 import { ChangePasswordRequest } from './dto/ChangePasswordRequest';
+import { UpdateUserRequestDto } from './dto/UpdateUserRequestDto';
+import { ConfirmForgetPasswordRequestDto } from './dto/ConfirmForgetPasswordRequestDto';
 
 @Controller()
 export class AuthController {
@@ -37,5 +39,80 @@ export class AuthController {
   ): Promise<{ message: string }> {
     await this.authService.changePassword(req.user.sub, dto);
     return { message: 'Password changed successfully' };
+  }
+
+  @Post('/api/auth/forget-password/init/:userId')
+  async initForgetPassword(
+    @Param('userId') userId: string,
+  ): Promise<{ message: string; requestId: string }> {
+    return this.authService.initForgetPasswordRequest(userId);
+  }
+
+  @Post('/api/auth/forget-password/confirm')
+  async confirmForgetPassword(
+    @Body() dto: ConfirmForgetPasswordRequestDto,
+  ): Promise<{ message: string }> {
+    return this.authService.confirmForgetPasswordRequest(dto);
+  }
+
+  @Post('/api/auth/toggle-ban-user/:id')
+  @UseGuards(JwtAuthGuard)
+  async toggleBanUser(
+    @Param('id') id: string,
+    @Req() req: Request & { user: JwtPayload },
+  ): Promise<{ message: string; isBanned: boolean }> {
+    const currentUser = req.user;
+
+    if (currentUser.role !== 'ADMIN') {
+      throw new ForbiddenException('Only ADMIN can perform this action');
+    }
+
+    const updatedUser = await this.authService.toggleBanUserById(id);
+    return {
+      message: `User ${updatedUser.isBanned ? 'banned' : 'unbanned'} successfully`,
+      isBanned: updatedUser.isBanned,
+    };
+  }
+
+  @Get('/api/users')
+  @UseGuards(JwtAuthGuard)
+  async getAllUsers(
+    @Req() req: Request & { user: JwtPayload },
+  ): Promise<UserResponse[]> {
+    if (req.user.role !== 'ADMIN') {
+      throw new ForbiddenException('Only ADMIN can view all users');
+    }
+
+    return this.authService.getAllUsers();
+  }
+
+  @Get('/api/users/:id')
+  @UseGuards(JwtAuthGuard)
+  async getUserById(@Param('id') id: string, @Req() req: Request & { user: JwtPayload }): Promise<UserResponse> {
+    const currentUser = req.user;
+
+    // Chỉ cho phép ADMIN hoặc chính chủ user
+    if (currentUser.role !== 'ADMIN' && currentUser.sub !== id) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    return this.authService.getUserById(id);
+  }
+
+  @Put('/api/users/:id')
+  @UseGuards(JwtAuthGuard)
+  async updateUserById(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserRequestDto,
+    @Req() req: Request & { user: JwtPayload },
+  ): Promise<UserResponse> {
+    const currentUser = req.user;
+
+    // Chỉ cho phép ADMIN hoặc chính chủ user
+    if (currentUser.role !== 'ADMIN' && currentUser.sub !== id) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    return this.authService.updateUserById(id, dto);
   }
 }
