@@ -4,10 +4,27 @@ import {
   ArrayNotEmpty,
   ValidateNested,
   IsNumber,
-  Min, IsOptional,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { CreateVariantRequest } from './CreateProductRequest';
+  Min,
+  IsOptional,
+} from "class-validator";
+import { Type } from "class-transformer";
+
+export class UpdateVariantRequest {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsString()
+  name: string;
+
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @IsNumber()
+  @Min(0)
+  stock: number;
+}
 
 export class UpdateProductRequest {
   @IsOptional()
@@ -23,9 +40,6 @@ export class UpdateProductRequest {
   brand?: string;
 
   @IsOptional()
-  status?: "PUBLISHED" | "ARCHIVED";
-
-  @IsOptional()
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
@@ -35,6 +49,6 @@ export class UpdateProductRequest {
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
-  @Type(() => CreateVariantRequest)
-  variants?: CreateVariantRequest[];
+  @Type(() => UpdateVariantRequest)
+  variants?: UpdateVariantRequest[];
 }

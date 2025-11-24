@@ -24,9 +24,6 @@ export class Product {
   imgUrls: string[];
 
   @Prop()
-  status: "PUBLISHED" | "ARCHIVED";
-
-  @Prop()
   variantIds: string[];
 
   @Prop()

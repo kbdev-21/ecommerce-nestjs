@@ -7,7 +7,7 @@ import { CreateRatingRequest } from './dto/CreateRatingRequest';
 
 @Controller()
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(private readonly productService: ProductService) { }
 
   @Post("/api/products")
   async create(@Body() request: CreateProductRequest): Promise<ProductResponse> {

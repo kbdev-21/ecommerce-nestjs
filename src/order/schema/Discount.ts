@@ -21,3 +21,5 @@ export class Discount {
   @Prop({ required: true })
   createdAt: Date;
 }
+
+export const DiscountSchema = SchemaFactory.createForClass(Discount);

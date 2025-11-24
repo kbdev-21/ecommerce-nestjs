@@ -1,27 +1,35 @@
-import * as bcrypt from 'bcrypt';
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { User } from './schema/User';
-import { Model } from 'mongoose';
-import { SignUpRequest } from './dto/SignUpRequest';
-import { UserResponse } from './dto/UserResponse';
-import { SignInRequest } from './dto/SignInRequest';
-import { SignInResponse } from './dto/SignInResponse';
-import { JwtService } from './JwtService';
-import { ChangePasswordRequest } from './dto/ChangePasswordRequest';
-import { UpdateUserRequestDto } from './dto/UpdateUserRequestDto';
-import { ForgetPasswordRequest } from './schema/ForgetPasswordRequest';
-import { NotificationService } from '../notification/NotificationService';
-import { ConfirmForgetPasswordRequestDto } from './dto/ConfirmForgetPasswordRequestDto';
+import * as bcrypt from "bcrypt";
+import * as crypto from "crypto";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+  ConflictException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { User } from "./schema/User";
+import { Model } from "mongoose";
+import { SignUpRequest } from "./dto/SignUpRequest";
+import { UserResponse } from "./dto/UserResponse";
+import { SignInRequest } from "./dto/SignInRequest";
+import { SignInResponse } from "./dto/SignInResponse";
+import { JwtService } from "./JwtService";
+import { ChangePasswordRequest } from "./dto/ChangePasswordRequest";
+import { UpdateUserRequestDto } from "./dto/UpdateUserRequestDto";
+import { ForgetPasswordRequest } from "./schema/ForgetPasswordRequest";
+import { NotificationService } from "../notification/NotificationService";
+import { ConfirmForgetPasswordRequestDto } from "./dto/ConfirmForgetPasswordRequestDto";
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>,
-    @InjectModel(ForgetPasswordRequest.name) private readonly forgetPwdModel: Model<ForgetPasswordRequest>,
+    @InjectModel(ForgetPasswordRequest.name)
+    private readonly forgetPwdModel: Model<ForgetPasswordRequest>,
     private readonly jwtService: JwtService,
-    private readonly notificationService: NotificationService,
-  ) {}
+    private readonly notificationService: NotificationService
+  ) { }
 
   private readonly SALT_ROUNDS = 10;
 
@@ -38,16 +46,29 @@ export class AuthService {
     const users = await this.userModel.find();
 
     if (!users || users.length === 0) {
-      throw new NotFoundException('No users found');
+      throw new NotFoundException("No users found");
     }
 
     return users.map((user) => this.userToResponse(user.toObject()));
   }
 
-  async updateUserById(userId: string, dto: UpdateUserRequestDto): Promise<UserResponse> {
+  async updateUserById(
+    userId: string,
+    dto: UpdateUserRequestDto
+  ): Promise<UserResponse> {
     const user = await this.userModel.findOne({ id: userId });
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
+    }
+
+    // Check email uniqueness if email is being updated
+    if (dto.email && dto.email !== user.email) {
+      const existingUser = await this.userModel.findOne({
+        email: dto.email,
+      });
+      if (existingUser) {
+        throw new ConflictException("Email already registered");
+      }
     }
 
     // cập nhật từng field nếu có trong dto
@@ -64,12 +85,15 @@ export class AuthService {
       user.addresses = dto.addresses.map((addr) => {
         if (addr.id) {
           // nếu có id, update entry cũ
-          const existing = user.addresses.find((a) => a.id === addr.id);
+          const existing = user.addresses.find(
+            (a) => a.id === addr.id
+          );
           if (existing) {
             existing.name = addr.name;
             existing.detail = addr.detail;
             return existing;
           }
+          // Nếu có id nhưng không tìm thấy, vẫn tạo mới (có thể là id từ client bị sai)
         }
 
         // nếu không có id hoặc không khớp => thêm mới
@@ -87,6 +111,14 @@ export class AuthService {
   }
 
   async signUp(request: SignUpRequest): Promise<SignInResponse> {
+    // Check if email already exists
+    const existingUser = await this.userModel.findOne({
+      email: request.email,
+    });
+    if (existingUser) {
+      throw new ConflictException("Email already registered");
+    }
+
     const hashed = await this.hashPassword(request.password);
 
     const newUser = new this.userModel({
@@ -95,14 +127,14 @@ export class AuthService {
       phoneNum: null,
       hashedPassword: hashed,
       name: request.name,
-      role: 'USER',
+      role: "USER",
       addresses: request.addresses.map((addr) => ({
         id: crypto.randomUUID(),
         name: addr.name,
         detail: addr.detail,
       })),
       createdAt: new Date(),
-      isBanned: false
+      isBanned: false,
     });
 
     const savedUser = await newUser.save();
@@ -115,17 +147,23 @@ export class AuthService {
     };
   }
 
-  async signInWithEmailAndPassword(request: SignInRequest): Promise<SignInResponse> {
+  async signInWithEmailAndPassword(
+    request: SignInRequest
+  ): Promise<SignInResponse> {
     const user = await this.userModel.findOne({ email: request.email });
-    if (!user) throw new UnauthorizedException('Invalid email or password');
+    if (!user) throw new UnauthorizedException("Invalid email or password");
 
     // 🔒 Check if user is banned
     if (user.isBanned) {
-      throw new UnauthorizedException('This account has been banned');
+      throw new UnauthorizedException("This account has been banned");
     }
 
-    const isValid = await this.comparePassword(request.password, user.hashedPassword);
-    if (!isValid) throw new UnauthorizedException('Invalid email or password');
+    const isValid = await this.comparePassword(
+      request.password,
+      user.hashedPassword
+    );
+    if (!isValid)
+      throw new UnauthorizedException("Invalid email or password");
 
     const token = this.jwtService.sign(user.id, user.role);
 
@@ -135,13 +173,19 @@ export class AuthService {
     };
   }
 
-
-  async changePassword(userId: string, dto: ChangePasswordRequest): Promise<void> {
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordRequest
+  ): Promise<void> {
     const user = await this.userModel.findOne({ id: userId });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
-    const isValid = await this.comparePassword(dto.oldPassword, user.hashedPassword);
-    if (!isValid) throw new UnauthorizedException('Old password is incorrect');
+    const isValid = await this.comparePassword(
+      dto.oldPassword,
+      user.hashedPassword
+    );
+    if (!isValid)
+      throw new UnauthorizedException("Old password is incorrect");
 
     user.hashedPassword = await this.hashPassword(dto.newPassword);
 
@@ -158,24 +202,28 @@ export class AuthService {
     await user.save();
 
     return {
-        id: user.id,
-        email: user.email,
-        isBanned: user.isBanned,
+      id: user.id,
+      email: user.email,
+      isBanned: user.isBanned,
     };
   }
 
-  async initForgetPasswordRequest(userId: string): Promise<{ message: string; requestId: string }> {
+  async initForgetPasswordRequest(
+    userId: string
+  ): Promise<{ message: string; requestId: string }> {
     const user = await this.userModel.findOne({ id: userId });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
     if (!user.email) {
-      throw new BadRequestException('User does not have a registered email');
+      throw new BadRequestException(
+        "User does not have a registered email"
+      );
     }
 
     // Hủy các yêu cầu cũ còn PENDING
     await this.forgetPwdModel.updateMany(
-      { userId: user.id, status: 'PENDING' },
-      { $set: { status: 'EXPIRED' } },
+      { userId: user.id, status: "PENDING" },
+      { $set: { status: "EXPIRED" } }
     );
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -184,7 +232,7 @@ export class AuthService {
       id: crypto.randomUUID(),
       userId: user.id,
       otpCode: otp,
-      status: 'PENDING',
+      status: "PENDING",
       createdAt: new Date(),
       expiredAt: new Date(Date.now() + 5 * 60 * 1000),
     });
@@ -197,46 +245,49 @@ export class AuthService {
     <p>Mã này sẽ hết hạn sau 5 phút.</p>
   `;
 
-    await this.notificationService.sendEmail(user.email, 'Mã OTP đặt lại mật khẩu', htmlContent);
+    await this.notificationService.sendEmail(
+      user.email,
+      "Mã OTP đặt lại mật khẩu",
+      htmlContent
+    );
 
     return {
-      message: 'OTP has been sent to your email',
+      message: "OTP has been sent to your email",
       requestId: request.id, // 👈 thêm dòng này
     };
   }
-
 
   // =============================
   // 🔹 2. CONFIRM FORGET PASSWORD
   // =============================
   async confirmForgetPasswordRequest(
-    dto: ConfirmForgetPasswordRequestDto,
+    dto: ConfirmForgetPasswordRequestDto
   ): Promise<{ message: string }> {
     const request = await this.forgetPwdModel.findOne({
       id: dto.requestId,
       otpCode: dto.otp,
-      status: 'PENDING',
+      status: "PENDING",
     });
 
     if (!request) {
-      throw new UnauthorizedException('Invalid request or OTP');
+      throw new UnauthorizedException("Invalid request or OTP");
     }
 
     if (new Date() > request.expiredAt) {
-      request.status = 'CANCELED';
+      request.status = "CANCELED";
       await request.save();
-      throw new BadRequestException('OTP has expired');
+      throw new BadRequestException("OTP has expired");
     }
 
     const user = await this.userModel.findOne({ id: request.userId });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
     // Hash mật khẩu mới
     user.hashedPassword = await this.hashPassword(dto.newPassword);
     await user.save();
 
     // Đánh dấu hoàn tất request
-    request.status = 'COMPLETED';
+    request.status = "COMPLETED";
     await request.save();
 
     const htmlContent = `
@@ -244,18 +295,23 @@ export class AuthService {
     <p>Tài khoản của bạn (${user.email}) đã được đặt lại mật khẩu thành công.</p>
     <p>Nếu bạn không thực hiện hành động này, hãy liên hệ ngay với bộ phận hỗ trợ.</p>
   `;
-    await this.notificationService.sendEmail(user.email, 'Đặt lại mật khẩu thành công', htmlContent);
+    await this.notificationService.sendEmail(
+      user.email,
+      "Đặt lại mật khẩu thành công",
+      htmlContent
+    );
 
-    return { message: 'Password has been reset successfully' };
+    return { message: "Password has been reset successfully" };
   }
-
-
 
   private async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, this.SALT_ROUNDS);
   }
 
-  private async comparePassword(password: string, hashed: string): Promise<boolean> {
+  private async comparePassword(
+    password: string,
+    hashed: string
+  ): Promise<boolean> {
     return bcrypt.compare(password, hashed);
   }
 
@@ -271,13 +327,12 @@ export class AuthService {
     userResponse.isBanned = user.isBanned;
 
     // map addresses manually
-    userResponse.addresses = (user.addresses || []).map(addr => ({
+    userResponse.addresses = (user.addresses || []).map((addr) => ({
       id: addr.id,
       name: addr.name,
       detail: addr.detail,
     }));
 
     return userResponse;
-
   }
 }

@@ -8,18 +8,18 @@ import {
   Param,
   ParseIntPipe,
   DefaultValuePipe,
-} from '@nestjs/common';
-import { OrderService } from './OrderService';
+} from "@nestjs/common";
+import { OrderService } from "./OrderService";
 import {
   CreateOrderRequest,
   UpdateOrderStatusRequest,
   CalculateCartRequest,
-} from './dto/OrderRequestDtos';
-import { Order } from './schema/Order';
+} from "./dto/OrderRequestDtos";
+import { Order } from "./schema/Order";
 
-@Controller('/api/orders')
+@Controller("/api/orders")
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(private readonly orderService: OrderService) { }
 
   // 🟩 1. Tạo đơn hàng (sau thanh toán)
   @Post()
@@ -30,26 +30,29 @@ export class OrderController {
   // 🟦 2. Lấy danh sách đơn hàng (phân trang)
   @Get()
   async findMany(
-    @Query('start', new DefaultValuePipe(0), ParseIntPipe) start: number,
-    @Query('count', new DefaultValuePipe(10), ParseIntPipe) count: number,
+    @Query("start", new DefaultValuePipe(0), ParseIntPipe) start: number,
+    @Query("count", new DefaultValuePipe(10), ParseIntPipe) count: number,
+    @Query("userId") userId?: string
   ): Promise<Order[]> {
-    return await this.orderService.findMany(start, count);
+    return await this.orderService.findMany(userId, start, count);
   }
 
   // 🟨 3. Lấy chi tiết 1 đơn hàng theo id
-  @Get(':id')
-  async findById(@Param('id') id: string): Promise<Order> {
+  @Get(":id")
+  async findById(@Param("id") id: string): Promise<Order> {
     return await this.orderService.findById(id);
   }
 
   // 🟧 4. Cập nhật trạng thái đơn hàng
-  @Patch('/status')
-  async updateStatus(@Body() request: UpdateOrderStatusRequest): Promise<Order> {
+  @Patch("/status")
+  async updateStatus(
+    @Body() request: UpdateOrderStatusRequest
+  ): Promise<Order> {
     return await this.orderService.updateStatus(request);
   }
 
   // 🟪 5. Tính toán giỏ hàng tạm (không lưu DB)
-  @Post('/calculate')
+  @Post("/calculate")
   async calculateCart(@Body() request: CalculateCartRequest): Promise<Order> {
     return await this.orderService.calculateCart(request);
   }

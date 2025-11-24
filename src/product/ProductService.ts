@@ -1,15 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from 'mongoose';
-import { Product, Rating } from './schema/Product';
-import { CreateProductRequest } from './dto/CreateProductRequest';
-import { Variant } from './schema/Variant';
-import { normalizeText } from '../shared/string-utils';
-import { Brand } from './schema/Brand';
-import { Category } from './schema/Category';
-import { ProductResponse } from './dto/ProductResponse';
-import { UpdateProductRequest } from './dto/UpdateProductRequest';
-import { CreateRatingRequest } from './dto/CreateRatingRequest';
+import { Model } from "mongoose";
+import { Product, Rating } from "./schema/Product";
+import { CreateProductRequest } from "./dto/CreateProductRequest";
+import { Variant } from "./schema/Variant";
+import { normalizeText } from "../shared/string-utils";
+import { Brand } from "./schema/Brand";
+import { Category } from "./schema/Category";
+import { ProductResponse } from "./dto/ProductResponse";
+import { UpdateProductRequest } from "./dto/UpdateProductRequest";
+import { CreateRatingRequest } from "./dto/CreateRatingRequest";
 
 @Injectable()
 export class ProductService {
@@ -17,21 +17,23 @@ export class ProductService {
     @InjectModel(Product.name) private productModel: Model<Product>,
     @InjectModel(Variant.name) private variantModel: Model<Variant>,
     @InjectModel(Brand.name) private brandModel: Model<Brand>,
-    @InjectModel(Category.name) private categoryModel: Model<Category>,
-  ) {}
+    @InjectModel(Category.name) private categoryModel: Model<Category>
+  ) { }
 
-  async createProduct(request: CreateProductRequest): Promise<ProductResponse> {
+  async createProduct(
+    request: CreateProductRequest
+  ): Promise<ProductResponse> {
     const newProductId = crypto.randomUUID();
 
     const newVariants = await Promise.all(
-      request.variants.map(variantDto => {
+      request.variants.map((variantDto) => {
         const newVariant = new this.variantModel({
           id: crypto.randomUUID(),
           productId: newProductId,
           name: variantDto.name,
           stock: variantDto.stock,
           price: variantDto.price,
-          sold: 0
+          sold: 0,
         });
         return newVariant.save();
       })
@@ -46,14 +48,20 @@ export class ProductService {
       category: request.category,
       imgUrls: request.imgUrls,
       status: "PUBLISHED",
-      variantIds: newVariants.map(v => v.id),
+      variantIds: newVariants.map((v) => v.id),
       ratings: [],
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     const savedProduct = await newProduct.save();
-    await this.updateBrandAfterProductChanges(savedProduct.brand, "increase");
-    await this.updateCategoryAfterProductChanges(savedProduct.category, "increase");
+    await this.updateBrandAfterProductChanges(
+      savedProduct.brand,
+      "increase"
+    );
+    await this.updateCategoryAfterProductChanges(
+      savedProduct.category,
+      "increase"
+    );
 
     return this.productToResponse(savedProduct, this.variantModel);
   }
@@ -66,8 +74,8 @@ export class ProductService {
       brand?: string;
       category?: string;
     },
-    start = 0,   // mặc định từ đầu
-    count = 10,  // mặc định 10 item
+    start = 0, // mặc định từ đầu
+    count = 10 // mặc định 10 item
   ): Promise<ProductResponse[]> {
     // Xác định default direction dựa theo field
     let defaultDirection: "asc" | "desc" =
@@ -88,7 +96,8 @@ export class ProductService {
 
     // $match filter & searchKey
     const match: any = {};
-    if (searchKey) match.normalizedTitle = { $regex: searchKey, $options: "i" };
+    if (searchKey)
+      match.normalizedTitle = { $regex: searchKey, $options: "i" };
     if (filter?.brand) match.brand = filter.brand;
     if (filter?.category) match.category = filter.category;
     if (Object.keys(match).length > 0) pipeline.push({ $match: match });
@@ -99,16 +108,16 @@ export class ProductService {
         from: "variants",
         localField: "id",
         foreignField: "productId",
-        as: "variants"
-      }
+        as: "variants",
+      },
     });
 
     // Tính aggregate fields
     pipeline.push({
       $addFields: {
         totalSold: { $sum: "$variants.sold" },
-        minPrice: { $min: "$variants.price" }
-      }
+        minPrice: { $min: "$variants.price" },
+      },
     });
 
     // Sort
@@ -124,8 +133,13 @@ export class ProductService {
     return this.productsToResponses(products, this.variantModel);
   }
 
-  async updateProductByProductId(productId: string, request: UpdateProductRequest): Promise<ProductResponse> {
-    const product = await this.productModel.findOne({ id: productId }).exec();
+  async updateProductByProductId(
+    productId: string,
+    request: UpdateProductRequest
+  ): Promise<ProductResponse> {
+    const product = await this.productModel
+      .findOne({ id: productId })
+      .exec();
     if (!product) {
       throw new Error(`Product with id ${productId} not found`);
     }
@@ -143,28 +157,68 @@ export class ProductService {
     if (request.category) product.category = request.category;
     if (request.brand) product.brand = request.brand;
     if (request.imgUrls) product.imgUrls = request.imgUrls;
-    if (request.status) product.status = request.status;
 
-    // nếu có variants mới thì replace toàn bộ
+    // nếu có variants mới thì xử lý theo id
     if (request.variants) {
-      // xoá variants cũ
-      await this.variantModel.deleteMany({ productId: product.id }).exec();
+      // lấy tất cả variants hiện tại của product
+      const existingVariants = await this.variantModel
+        .find({ productId: product.id })
+        .exec();
+      const existingVariantMap = new Map(
+        existingVariants.map((v) => [v.id, v])
+      );
 
-      // tạo variants mới
-      const newVariants = await Promise.all(
-        request.variants.map(vdto => {
-          const variant = new this.variantModel({
+      // tập hợp id từ request
+      const requestVariantIds = new Set(
+        request.variants
+          .map((v) => v.id)
+          .filter((id): id is string => id !== undefined)
+      );
+
+      // xử lý từng variant trong request
+      const updatedVariantIds: string[] = [];
+
+      for (const vdto of request.variants) {
+        if (vdto.id) {
+          // variant có id -> update variant hiện tại
+          const existingVariant = existingVariantMap.get(vdto.id);
+          if (!existingVariant) {
+            throw new Error(`Variant with id ${vdto.id} not found`);
+          }
+
+          existingVariant.name = vdto.name;
+          existingVariant.price = vdto.price;
+          existingVariant.stock = vdto.stock;
+          await existingVariant.save();
+          updatedVariantIds.push(existingVariant.id);
+        } else {
+          // variant không có id -> tạo mới
+          const newVariant = new this.variantModel({
             id: crypto.randomUUID(),
             productId: product.id,
             name: vdto.name,
             price: vdto.price,
             stock: vdto.stock,
+            sold: 0,
           });
-          return variant.save();
-        })
-      );
+          const saved = await newVariant.save();
+          updatedVariantIds.push(saved.id);
+        }
+      }
 
-      product.variantIds = newVariants.map(v => v.id);
+      // xoá các variants không có trong request
+      const variantsToDelete = existingVariants.filter(
+        (v) => !requestVariantIds.has(v.id)
+      );
+      if (variantsToDelete.length > 0) {
+        await this.variantModel
+          .deleteMany({
+            id: { $in: variantsToDelete.map((v) => v.id) },
+          })
+          .exec();
+      }
+
+      product.variantIds = updatedVariantIds;
     }
 
     const saved = await product.save();
@@ -172,20 +226,31 @@ export class ProductService {
     // xử lý brand/category count
     if (request.brand && request.brand !== oldBrand) {
       await this.updateBrandAfterProductChanges(oldBrand, "decrease");
-      await this.updateBrandAfterProductChanges(request.brand, "increase");
+      await this.updateBrandAfterProductChanges(
+        request.brand,
+        "increase"
+      );
     }
     if (request.category && request.category !== oldCategory) {
-      await this.updateCategoryAfterProductChanges(oldCategory, "decrease");
-      await this.updateCategoryAfterProductChanges(request.category, "increase");
+      await this.updateCategoryAfterProductChanges(
+        oldCategory,
+        "decrease"
+      );
+      await this.updateCategoryAfterProductChanges(
+        request.category,
+        "increase"
+      );
     }
 
     return this.productToResponse(saved, this.variantModel);
   }
 
   async getProductByHandle(handle: string): Promise<ProductResponse> {
-    const product = await this.productModel.findOne({
-      $or: [{ id: handle }, { normalizedTitle: handle }],
-    }).exec();
+    const product = await this.productModel
+      .findOne({
+        $or: [{ id: handle }, { normalizedTitle: handle }],
+      })
+      .exec();
 
     if (!product) {
       throw new Error(`Product with handle "${handle}" not found`);
@@ -220,8 +285,13 @@ export class ProductService {
     return variant.save();
   }
 
-  async createProductRatingByProductId(productId: string, request: CreateRatingRequest): Promise<ProductResponse> {
-    const product = await this.productModel.findOne({ id: productId }).exec();
+  async createProductRatingByProductId(
+    productId: string,
+    request: CreateRatingRequest
+  ): Promise<ProductResponse> {
+    const product = await this.productModel
+      .findOne({ id: productId })
+      .exec();
     if (!product) {
       throw new Error(`Product with id ${productId} not found`);
     }
@@ -241,7 +311,9 @@ export class ProductService {
   }
 
   async deleteProductByProductId(productId: string): Promise<void> {
-    const product = await this.productModel.findOne({ id: productId }).exec();
+    const product = await this.productModel
+      .findOne({ id: productId })
+      .exec();
     if (!product) {
       throw new Error(`Product with id ${productId} not found`);
     }
@@ -251,29 +323,43 @@ export class ProductService {
 
     // decrease brand/category count
     if (product.brand) {
-      await this.updateBrandAfterProductChanges(product.brand, "decrease");
+      await this.updateBrandAfterProductChanges(
+        product.brand,
+        "decrease"
+      );
     }
     if (product.category) {
-      await this.updateCategoryAfterProductChanges(product.category, "decrease");
+      await this.updateCategoryAfterProductChanges(
+        product.category,
+        "decrease"
+      );
     }
 
     // xoá product
     await this.productModel.deleteOne({ id: product.id }).exec();
   }
 
-  private async productToResponse(product: Product, variantModel: any): Promise<ProductResponse> {
+  private async productToResponse(
+    product: Product,
+    variantModel: any
+  ): Promise<ProductResponse> {
     return (await this.productsToResponses([product], variantModel))[0];
   }
 
-  private async productsToResponses(products: Product[], variantModel: any): Promise<ProductResponse[]> {
-    const allVariantIds = products.flatMap(p => p.variantIds);
+  private async productsToResponses(
+    products: Product[],
+    variantModel: any
+  ): Promise<ProductResponse[]> {
+    const allVariantIds = products.flatMap((p) => p.variantIds);
 
-    const variants = await variantModel.find({ id: { $in: allVariantIds } }).exec();
+    const variants = await variantModel
+      .find({ id: { $in: allVariantIds } })
+      .exec();
 
     const variantMap = new Map<string, Variant>();
-    variants.forEach(v => variantMap.set(v.id, v));
+    variants.forEach((v) => variantMap.set(v.id, v));
 
-    return products.map(product => {
+    return products.map((product) => {
       return {
         id: product.id,
         title: product.title,
@@ -282,9 +368,8 @@ export class ProductService {
         category: product.category,
         brand: product.brand,
         imgUrls: product.imgUrls,
-        status: product.status,
         variants: product.variantIds
-          .map(vid => variantMap.get(vid))
+          .map((vid) => variantMap.get(vid))
           .filter((v): v is Variant => v !== undefined),
         ratings: product.ratings,
         createdAt: product.createdAt,
@@ -292,7 +377,10 @@ export class ProductService {
     });
   }
 
-  private async updateBrandAfterProductChanges(brandTitle: string, type: "increase" | "decrease"): Promise<Brand> {
+  private async updateBrandAfterProductChanges(
+    brandTitle: string,
+    type: "increase" | "decrease"
+  ): Promise<Brand> {
     let brand = await this.brandModel.findOne({ title: brandTitle }).exec();
     if (!brand) {
       brand = new this.brandModel({
@@ -306,8 +394,13 @@ export class ProductService {
     return brand.save();
   }
 
-  private async updateCategoryAfterProductChanges(categoryTitle: string, type: "increase" | "decrease"): Promise<Brand> {
-    let category = await this.categoryModel.findOne({ title: categoryTitle }).exec();
+  private async updateCategoryAfterProductChanges(
+    categoryTitle: string,
+    type: "increase" | "decrease"
+  ): Promise<Brand> {
+    let category = await this.categoryModel
+      .findOne({ title: categoryTitle })
+      .exec();
     if (!category) {
       category = new this.categoryModel({
         id: crypto.randomUUID(),

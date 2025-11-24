@@ -10,7 +10,6 @@ export class ProductResponse {
   category: string;
   brand: string;
   imgUrls: string[];
-  status: "PUBLISHED" | "ARCHIVED";
   variants: Variant[];
   ratings: Rating[];
   createdAt: Date;
