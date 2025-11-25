@@ -1,45 +1,58 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 
+export class Variant {
+    id: string;
+    name: string;
+    price: number;
+    stock: number;
+    sold: number;
+}
+
+export const VariantSchema = SchemaFactory.createForClass(Variant);
+
 @Schema()
 export class Product {
-  @Prop({required: true, unique: true})
-  id: string;
+    @Prop({ required: true, unique: true })
+    id: string;
 
-  @Prop({unique: true})
-  title: string;
+    @Prop({ unique: true })
+    title: string;
 
-  @Prop({unique: true})
-  normalizedTitle: string;
+    @Prop({ unique: true })
+    normalizedTitle: string;
 
-  @Prop()
-  description: string;
+    @Prop({ unique: true })
+    slug: string;
 
-  @Prop()
-  category: string;
+    @Prop()
+    description: string;
 
-  @Prop()
-  brand: string;
+    @Prop()
+    category: string;
 
-  @Prop()
-  imgUrls: string[];
+    @Prop()
+    brand: string;
 
-  @Prop()
-  variantIds: string[];
+    @Prop()
+    imgUrls: string[];
 
-  @Prop()
-  ratings: Rating[];
+    @Prop({ type: Array, default: [] })
+    variants: Variant[];
 
-  @Prop()
-  createdAt: Date;
+    @Prop()
+    ratings: Rating[];
+
+    @Prop()
+    createdAt: Date;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
 
 export class Rating {
-  id: string;
-  userId: string;
-  userName: string;
-  score: number;
-  comment: string;
-  createdAt: Date;
+    id: string;
+    userId: string;
+    userName: string;
+    score: number;
+    comment: string;
+    createdAt: Date;
 }

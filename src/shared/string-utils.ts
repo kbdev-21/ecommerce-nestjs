@@ -7,3 +7,13 @@ export function normalizeText(text: string): string {
     .trim()
     .replace(/\s+/g, " ");
 }
+
+export function createSlug(text: string): string {
+  if (!text) return "";
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-");
+}

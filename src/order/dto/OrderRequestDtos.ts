@@ -23,9 +23,9 @@ export class OrderItemInput {
 }
 
 export class CreateOrderRequest {
-  @IsOptional()
   @IsString()
-  userId?: string;
+  @IsNotEmpty()
+  addressDetail: string;
 
   @IsString()
   @IsNotEmpty()
@@ -59,9 +59,9 @@ export class UpdateOrderStatusRequest {
 }
 
 export class CalculateCartRequest {
-  @IsOptional()
   @IsString()
-  userId?: string;
+  @IsNotEmpty()
+  addressDetail: string;
 
   @IsString()
   @IsNotEmpty()
