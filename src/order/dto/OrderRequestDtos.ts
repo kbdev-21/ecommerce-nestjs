@@ -59,21 +59,6 @@ export class UpdateOrderStatusRequest {
 }
 
 export class CalculateCartRequest {
-  @IsString()
-  @IsNotEmpty()
-  addressDetail: string;
-
-  @IsString()
-  @IsNotEmpty()
-  fullName: string;
-
-  @IsEmail()
-  email: string;
-
-  @IsString()
-  @IsNotEmpty()
-  phoneNum: string;
-
   @IsOptional()
   @IsString()
   discountCode?: string;
