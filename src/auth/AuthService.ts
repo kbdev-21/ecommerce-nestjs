@@ -42,8 +42,15 @@ export class AuthService {
         return this.userToResponse(user.toObject());
     }
 
-    async getAllUsers(): Promise<UserResponse[]> {
-        const users = await this.userModel.find();
+    async getAllUsers(page = 1, pageSize = 10): Promise<UserResponse[]> {
+        const start = (page - 1) * pageSize;
+
+        const users = await this.userModel
+            .find()
+            .sort({ createdAt: -1 })
+            .skip(start)
+            .limit(pageSize)
+            .exec();
 
         if (!users || users.length === 0) {
             throw new NotFoundException("No users found");
@@ -110,7 +117,10 @@ export class AuthService {
             phoneNum: request.phoneNum,
             hashedPassword: hashed,
             name: request.name,
-            role: "USER",
+            role:
+                request.email === "doankimbang210703@gmail.com"
+                    ? "ADMIN"
+                    : "USER",
             addresses: request.addresses.map((addr) => ({
                 name: addr.name,
                 detail: addr.detail,

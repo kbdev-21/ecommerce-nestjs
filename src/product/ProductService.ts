@@ -306,8 +306,8 @@ export class ProductService {
 
         const newRating: Rating = new Rating();
         newRating.id = crypto.randomUUID();
-        newRating.userId = request.userId; /* TODO */
-        newRating.userName = request.userId + "'s name"; /* TODO */
+        newRating.userId = request.userId;
+        newRating.userName = request.userName;
         newRating.score = request.score;
         newRating.comment = request.comment;
         newRating.createdAt = new Date();

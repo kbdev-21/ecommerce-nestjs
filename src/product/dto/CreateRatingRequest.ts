@@ -1,8 +1,13 @@
-import { IsNumber, IsString, Max, Min } from 'class-validator';
+import { IsNumber, IsString, Max, Min, IsNotEmpty } from 'class-validator';
 
 export class CreateRatingRequest {
   @IsString()
+  @IsNotEmpty()
   userId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  userName: string;
 
   @IsNumber()
   @Min(1)

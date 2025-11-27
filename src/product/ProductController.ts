@@ -5,7 +5,7 @@ import {
     Get,
     Param,
     Post,
-    Put,
+    Patch,
     Query,
 } from "@nestjs/common";
 import { ProductService } from "./ProductService";
@@ -42,13 +42,17 @@ export class ProductController {
         // Set default sortBy if not provided
         const sortByValue = sortBy ?? "-createdAt";
 
-        const start = (page - 1) * pageSize;
+        // Convert to numbers (query params are strings)
+        const pageNum = Number(page) || 1;
+        const pageSizeNum = Number(pageSize) || 10;
+
+        const start = (pageNum - 1) * pageSizeNum;
         return this.productService.findProducts(
             searchKey,
             sortByValue,
             filter,
             start,
-            pageSize
+            pageSizeNum
         );
     }
 
@@ -57,7 +61,7 @@ export class ProductController {
         return this.productService.getProductBySlug(slug);
     }
 
-    @Put("/api/products/:id")
+    @Patch("/api/products/:id")
     async update(
         @Param("id") id: string,
         @Body() request: UpdateProductRequest
