@@ -5,6 +5,7 @@ import { ProductService } from "./ProductService";
 import { Product, ProductSchema } from "./schema/Product";
 import { Category, CategorySchema } from "./schema/Category";
 import { Brand, BrandSchema } from "./schema/Brand";
+import { AuthModule } from "../auth/auth.module";
 
 @Module({
     imports: [
@@ -13,6 +14,7 @@ import { Brand, BrandSchema } from "./schema/Brand";
             { name: Category.name, schema: CategorySchema },
             { name: Brand.name, schema: BrandSchema },
         ]),
+        AuthModule,
     ],
     controllers: [ProductController],
     providers: [ProductService],

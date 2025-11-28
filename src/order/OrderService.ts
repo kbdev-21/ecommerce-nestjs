@@ -14,6 +14,7 @@ import {
 } from "./dto/OrderRequestDtos";
 import { ProductService } from "../product/ProductService";
 import { DiscountService } from "./DiscountService";
+import { NotificationService } from "src/notification/NotificationService";
 
 @Injectable()
 export class OrderService {
@@ -21,7 +22,8 @@ export class OrderService {
     @InjectModel(Order.name)
     private readonly orderModel: Model<Order>,
     private readonly productService: ProductService,
-    private readonly discountService: DiscountService
+    private readonly discountService: DiscountService,
+    private readonly notificationService: NotificationService
   ) { }
 
   // 🟩 1. Tạo đơn hàng mới (sau khi thanh toán thành công)
@@ -97,6 +99,9 @@ export class OrderService {
       await this.discountService.incrementUsage(request.discountCode);
     }
 
+    // Bước 8: Gửi email thông báo
+    await this.notificationService.sendEmail(request.email, "Đơn hàng của bạn đã được đặt thành công", `Đơn hàng ${createdOrder.id} đã được đặt thành công.`);
+
     // Bước 8: Lưu order
     return await createdOrder.save();
   }
@@ -131,6 +136,21 @@ export class OrderService {
     );
     if (!order) throw new NotFoundException("Không tìm thấy đơn hàng");
     return order;
+  }
+
+  async getCompletedOrdersCount(): Promise<number> {
+    return await this.orderModel.countDocuments({ status: "COMPLETED" }).exec();
+  }
+
+  async getCompletedOrdersRevenue(): Promise<number> {
+    const result = await this.orderModel
+      .aggregate([
+        { $match: { status: "COMPLETED" } },
+        { $group: { _id: null, totalRevenue: { $sum: "$totalPrice" } } },
+      ])
+      .exec();
+
+    return result[0]?.totalRevenue ?? 0;
   }
 
   // 🟩 5. Tính toán giỏ hàng (cart tạm) — không lưu DB

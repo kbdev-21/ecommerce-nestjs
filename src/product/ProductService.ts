@@ -195,6 +195,8 @@ export class ProductService {
             }
 
             product.variants = updatedVariants;
+            // đảm bảo Mongoose nhận ra thay đổi trên mảng variants (kiểu Array/Mixed)
+            (product as any).markModified("variants");
         }
 
         const saved = await product.save();
@@ -286,11 +288,19 @@ export class ProductService {
             throw new Error(`Insufficient stock for variant "${id}"`);
         }
 
+        // cập nhật số lượng
         variant.stock -= quantity;
         variant.sold += quantity;
 
-        await product.save();
-        return variant;
+        // vì variants được khai báo là Array (Mixed) nên cần markModified
+        // để Mongoose thực sự lưu thay đổi vào DB
+        (product as any).markModified("variants");
+
+        const savedProduct = await product.save();
+        const updatedVariant = savedProduct.variants.find((v) => v.id === id);
+
+        // fallback: nếu vì lý do gì đó không tìm thấy, trả về bản variant đã modify
+        return (updatedVariant as Variant) ?? variant;
     }
 
     async createProductRatingByProductId(

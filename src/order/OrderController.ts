@@ -1,13 +1,16 @@
 import {
-    Controller,
-    Get,
-    Post,
-    Patch,
-    Query,
     Body,
+    Controller,
+    DefaultValuePipe,
+    ForbiddenException,
+    Get,
     Param,
     ParseIntPipe,
-    DefaultValuePipe,
+    Patch,
+    Post,
+    Query,
+    Req,
+    UseGuards,
 } from "@nestjs/common";
 import { OrderService } from "./OrderService";
 import {
@@ -16,6 +19,8 @@ import {
     CalculateCartRequest,
 } from "./dto/OrderRequestDtos";
 import { Order } from "./schema/Order";
+import { JwtAuthGuard } from "../auth/JwtAuthGuard";
+import { JwtPayload } from "../auth/JwtService";
 
 @Controller("/api/orders")
 export class OrderController {
@@ -37,6 +42,30 @@ export class OrderController {
         return await this.orderService.findMany(email, start, count);
     }
 
+    @Get("/dashboard/count")
+    @UseGuards(JwtAuthGuard)
+    async getCompletedOrdersCount(
+        @Req() req: Request & { user: JwtPayload }
+    ): Promise<number> {
+        if (req.user.role !== "ADMIN") {
+            throw new ForbiddenException("Only ADMIN can perform this action");
+        }
+
+        return await this.orderService.getCompletedOrdersCount();
+    }
+
+    @Get("/dashboard/revenue")
+    @UseGuards(JwtAuthGuard)
+    async getCompletedOrdersRevenue(
+        @Req() req: Request & { user: JwtPayload }
+    ): Promise<number> {
+        if (req.user.role !== "ADMIN") {
+            throw new ForbiddenException("Only ADMIN can perform this action");
+        }
+
+        return await this.orderService.getCompletedOrdersRevenue();
+    }
+
     // 🟨 3. Lấy chi tiết 1 đơn hàng theo id
     @Get(":id")
     async findById(@Param("id") id: string): Promise<Order> {
@@ -45,9 +74,15 @@ export class OrderController {
 
     // 🟧 4. Cập nhật trạng thái đơn hàng
     @Patch("/status")
+    @UseGuards(JwtAuthGuard)
     async updateStatus(
-        @Body() request: UpdateOrderStatusRequest
+        @Body() request: UpdateOrderStatusRequest,
+        @Req() req: Request & { user: JwtPayload }
     ): Promise<Order> {
+        if (req.user.role !== "ADMIN") {
+            throw new ForbiddenException("Only ADMIN can perform this action");
+        }
+
         return await this.orderService.updateStatus(request);
     }
 

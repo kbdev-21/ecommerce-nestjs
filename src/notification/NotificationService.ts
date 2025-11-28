@@ -19,7 +19,7 @@ export class NotificationService {
 
   async sendEmail(to: string, subject: string, html: string) {
     await this.transporter.sendMail({
-      from: `"My App" <${process.env.EMAIL_USER}>`,
+      from: `"My App"`,
       to,
       subject,
       html,

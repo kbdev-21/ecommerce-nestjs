@@ -7,21 +7,31 @@ import {
     Post,
     Patch,
     Query,
+    UseGuards,
+    Req,
+    ForbiddenException,
 } from "@nestjs/common";
 import { ProductService } from "./ProductService";
 import { CreateProductRequest } from "./dto/CreateProductRequest";
 import { ProductResponse } from "./dto/ProductResponse";
 import { UpdateProductRequest } from "./dto/UpdateProductRequest";
 import { CreateRatingRequest } from "./dto/CreateRatingRequest";
+import { JwtAuthGuard } from "../auth/JwtAuthGuard";
+import { JwtPayload } from "../auth/JwtService";
 
 @Controller()
 export class ProductController {
     constructor(private readonly productService: ProductService) {}
 
     @Post("/api/products")
+    @UseGuards(JwtAuthGuard)
     async create(
-        @Body() request: CreateProductRequest
+        @Body() request: CreateProductRequest,
+        @Req() req: Request & { user: JwtPayload }
     ): Promise<ProductResponse> {
+        if (req.user.role !== "ADMIN") {
+            throw new ForbiddenException("Only ADMIN can perform this action");
+        }
         return this.productService.createProduct(request);
     }
 
@@ -62,24 +72,41 @@ export class ProductController {
     }
 
     @Patch("/api/products/:id")
+    @UseGuards(JwtAuthGuard)
     async update(
         @Param("id") id: string,
-        @Body() request: UpdateProductRequest
+        @Body() request: UpdateProductRequest,
+        @Req() req: Request & { user: JwtPayload }
     ): Promise<ProductResponse> {
+        if (req.user.role !== "ADMIN") {
+            throw new ForbiddenException("Only ADMIN can perform this action");
+        }
         return this.productService.updateProductByProductId(id, request);
     }
 
     @Delete("/api/products/:id")
-    async delete(@Param("id") id: string): Promise<{ success: boolean }> {
+    @UseGuards(JwtAuthGuard)
+    async delete(
+        @Param("id") id: string,
+        @Req() req: Request & { user: JwtPayload }
+    ): Promise<{ success: boolean }> {
+        if (req.user.role !== "ADMIN") {
+            throw new ForbiddenException("Only ADMIN can perform this action");
+        }
         await this.productService.deleteProductByProductId(id);
         return { success: true };
     }
 
     @Post("/api/products/:id/ratings")
+    @UseGuards(JwtAuthGuard)
     async createRating(
         @Param("id") id: string,
-        @Body() request: CreateRatingRequest
+        @Body() request: CreateRatingRequest,
+        @Req() req: Request & { user: JwtPayload }
     ): Promise<ProductResponse> {
+        if (req.user.role !== "ADMIN") {
+            throw new ForbiddenException("Only ADMIN can perform this action");
+        }
         return this.productService.createProductRatingByProductId(id, request);
     }
 

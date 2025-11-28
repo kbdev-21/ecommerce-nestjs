@@ -55,11 +55,11 @@ export class AuthController {
         return { message: "Password changed successfully" };
     }
 
-    @Post("/api/auth/forget-password/init/:userId")
+    @Post("/api/auth/forget-password/init")
     async initForgetPassword(
-        @Param("userId") userId: string
+        @Body() body: { email: string }
     ): Promise<{ message: string; requestId: string }> {
-        return this.authService.initForgetPasswordRequest(userId);
+        return this.authService.initForgetPasswordRequest(body.email);
     }
 
     @Post("/api/auth/forget-password/confirm")
@@ -138,5 +138,17 @@ export class AuthController {
         }
 
         return this.authService.updateUserById(id, dto);
+    }
+
+    @Get("/api/users/dashboard/count")
+    @UseGuards(JwtAuthGuard)
+    async getTotalUsers(
+        @Req() req: Request & { user: JwtPayload }
+    ): Promise<number> {
+        if (req.user.role !== "ADMIN") {
+            throw new ForbiddenException("Only ADMIN can view total users");
+        }
+
+        return this.authService.getTotalUsers();
     }
 }

@@ -59,6 +59,10 @@ export class AuthService {
         return users.map((user) => this.userToResponse(user.toObject()));
     }
 
+    async getTotalUsers(): Promise<number> {
+        return await this.userModel.countDocuments().exec();
+    }
+
     async updateUserById(
         userId: string,
         dto: UpdateUserRequestDto
@@ -201,9 +205,9 @@ export class AuthService {
     }
 
     async initForgetPasswordRequest(
-        userId: string
+        email: string
     ): Promise<{ message: string; requestId: string }> {
-        const user = await this.userModel.findOne({ id: userId });
+        const user = await this.userModel.findOne({ email });
         if (!user) throw new NotFoundException("User not found");
 
         if (!user.email) {
