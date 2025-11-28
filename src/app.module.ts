@@ -1,19 +1,23 @@
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { ProductModule } from './product/product.module';
-import { AuthModule } from './auth/auth.module';
-import { NotificationModule } from './notification/notification.module';
-import { OrderModule } from './order/order.module';
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { ProductModule } from "./product/product.module";
+import { AuthModule } from "./auth/auth.module";
+import { NotificationModule } from "./notification/notification.module";
+import { OrderModule } from "./order/order.module";
+import { ConfigModule } from "@nestjs/config";
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     MongooseModule.forRoot(
-      'mongodb+srv://doankimbang210703_db_user:XQrchDtTvt0IE43i@cluster0.sagmog3.mongodb.net/ecommerce?retryWrites=true&w=majority&appName=Cluster0',
+      process.env.MONGODB_CONNECTION_STRING || ''
     ),
     ProductModule,
     AuthModule,
     NotificationModule,
-    OrderModule
+    OrderModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
