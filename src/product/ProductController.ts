@@ -98,15 +98,11 @@ export class ProductController {
     }
 
     @Post("/api/products/:id/ratings")
-    @UseGuards(JwtAuthGuard)
     async createRating(
         @Param("id") id: string,
         @Body() request: CreateRatingRequest,
         @Req() req: Request & { user: JwtPayload }
     ): Promise<ProductResponse> {
-        if (req.user.role !== "ADMIN") {
-            throw new ForbiddenException("Only ADMIN can perform this action");
-        }
         return this.productService.createProductRatingByProductId(id, request);
     }
 
