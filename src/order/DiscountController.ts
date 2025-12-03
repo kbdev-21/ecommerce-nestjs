@@ -22,6 +22,7 @@ export class DiscountController {
 
     // 🟩 1. Tạo discount mới
     @Post()
+    @UseGuards(JwtAuthGuard)
     async create(
         @Body() request: Omit<Discount, "id" | "usageCount">,
         @Req() req: Request & { user: JwtPayload }
@@ -72,6 +73,7 @@ export class DiscountController {
 
     // 🟧 5. Cập nhật discount
     @Patch(":id")
+    @UseGuards(JwtAuthGuard)
     async update(
         @Param("id") id: string,
         @Body() request: Partial<Discount>,
